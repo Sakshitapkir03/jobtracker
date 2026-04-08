@@ -16,8 +16,7 @@ _BULK_BATCH = 500
 
 _INSERT_SQL = text(
     "INSERT INTO companies (id, user_id, name, website, careers_url, industry, notes) "
-    "VALUES (:id, :user_id, :name, :website, :careers_url, :industry, :notes) "
-    "ON CONFLICT DO NOTHING"
+    "VALUES (:id, :user_id, :name, :website, :careers_url, :industry, :notes)"
 )
 
 
@@ -73,7 +72,6 @@ async def upload_companies_file(
     try:
         for i in range(0, len(rows), _BULK_BATCH):
             await db.execute(_INSERT_SQL, rows[i: i + _BULK_BATCH])
-        await db.commit()
     except Exception as exc:
         logger.error("DB insert failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"DB insert failed: {exc}")
