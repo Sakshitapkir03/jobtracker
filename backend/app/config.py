@@ -7,9 +7,6 @@ class Settings(BaseSettings):
     # Database (required)
     database_url: str
 
-    # Redis + Celery
-    redis_url: str = "redis://localhost:6379/0"
-
     # App
     environment: str = "development"
 

@@ -8,18 +8,9 @@ sqlalchemy[asyncio]==2.0.30
 asyncpg==0.29.0
 alembic==1.13.1
 
-# Supabase / Auth
-supabase==2.5.0
-python-jose[cryptography]==3.3.0
-
 # Pydantic / Settings
 pydantic==2.7.1
 pydantic-settings==2.3.0
-
-# Redis + Celery
-redis==5.0.4
-celery[redis]==5.4.0
-flower==2.0.1
 
 # PDF parsing
 pdfplumber==0.11.0
@@ -31,15 +22,8 @@ pandas==2.2.2
 
 # Web scraping
 playwright==1.44.0
-
-# Email
-resend==2.0.0
+httpx==0.27.0
 
 # Utils
-httpx==0.27.0
 python-dateutil==2.9.0
 tenacity==8.3.0
-
-# Dev
-pytest==8.2.0
-pytest-asyncio==0.23.6
