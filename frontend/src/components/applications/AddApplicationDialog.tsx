@@ -12,13 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCreateApplication } from "@/hooks/useApplications";
 import { useCompanies } from "@/hooks/useCompanies";
+import type { ApplicationStage } from "@/types";
 
 const schema = z.object({
   job_title: z.string().min(1, "Required"),
   company_id: z.string().min(1, "Required"),
   job_url: z.string().url().optional().or(z.literal("")),
   applied_at: z.string().min(1, "Required"),
-  stage: z.string().default("APPLIED"),
+  stage: z.enum(["BOOKMARKED","APPLIED","PHONE_SCREEN","TECHNICAL","ONSITE","OFFER","REJECTED","WITHDRAWN"]).default("APPLIED"),
   notes: z.string().optional(),
 });
 
