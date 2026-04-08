@@ -38,19 +38,97 @@ _HEADERS = {
 
 # ── URL discovery ──────────────────────────────────────────────────────────
 
+def _clean_name(name: str) -> str:
+    """Convert 'STRIPE INC' → 'Stripe' for better search results."""
+    # Remove common legal suffixes
+    suffixes = (
+        " INC", " LLC", " CORP", " CORPORATION", " LTD", " LIMITED",
+        " CO", " COMPANY", " LP", " LLP", " PLC", " AG", " GMBH",
+        " INC.", " LLC.", " CORP.", " LTD.",
+    )
+    cleaned = name.upper()
+    for s in suffixes:
+        if cleaned.endswith(s):
+            cleaned = cleaned[: -len(s)].strip()
+            break
+    # Title case for better search results
+    return cleaned.title().strip()
+
+
 async def find_careers_url(company_name: str) -> str | None:
     """
-    Try to find a company's careers URL.
-    1. Search for known ATS domains first (Greenhouse, Lever, Ashby)
-    2. Fall back to general DuckDuckGo search
+    Find a company's careers URL:
+    1. Direct ATS slug probe (fastest — no search engine)
+    2. DuckDuckGo ATS search
+    3. DuckDuckGo general search
     """
-    # Try ATS-specific search first (most reliable)
-    ats_url = await _search_ats_url(company_name)
+    search_name = _clean_name(company_name)
+
+    # 1. Probe known ATS platforms directly using common slug patterns
+    direct = await _probe_ats_directly(search_name)
+    if direct:
+        return direct
+
+    await asyncio.sleep(1)  # Rate-limit guard before search engine calls
+
+    # 2. DuckDuckGo ATS-targeted search
+    ats_url = await _search_ats_url(search_name)
     if ats_url:
         return ats_url
 
-    # General search fallback
-    return await _search_ddg(f"{company_name} careers jobs site")
+    await asyncio.sleep(1)
+
+    # 3. General DuckDuckGo search
+    return await _ddg_first_result(f"{search_name} careers jobs")
+
+
+async def _probe_ats_directly(clean_name: str) -> str | None:
+    """
+    Try common slug patterns on Greenhouse, Lever, Ashby without a search engine.
+    Converts 'Stripe' → 'stripe', 'Bank Of America' → 'bankofamerica', etc.
+    """
+    slug_variants = _name_to_slugs(clean_name)
+
+    probes = []
+    for slug in slug_variants:
+        probes += [
+            f"https://boards.greenhouse.io/{slug}",
+            f"https://jobs.lever.co/{slug}",
+            f"https://jobs.ashbyhq.com/{slug}",
+        ]
+
+    async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
+        for url in probes:
+            try:
+                resp = await client.head(url, headers=_HEADERS)
+                if resp.status_code < 400:
+                    logger.info("Direct ATS probe hit: %s", url)
+                    return url
+            except Exception:
+                continue
+    return None
+
+
+def _name_to_slugs(clean_name: str) -> list[str]:
+    """Generate slug candidates from a company name."""
+    base = clean_name.lower()
+    # Remove punctuation
+    no_punct = re.sub(r"[^a-z0-9\s]", "", base).strip()
+    # Variants
+    slugs = []
+    slugs.append(no_punct.replace(" ", ""))   # "bankofamerica"
+    slugs.append(no_punct.replace(" ", "-"))  # "bank-of-america"
+    # First word only (e.g. "Microsoft" from "Microsoft Corporation")
+    first_word = no_punct.split()[0] if no_punct.split() else no_punct
+    if first_word not in slugs:
+        slugs.append(first_word)
+    # First two words joined
+    words = no_punct.split()
+    if len(words) >= 2:
+        two = words[0] + words[1]
+        if two not in slugs:
+            slugs.append(two)
+    return slugs
 
 
 async def _search_ats_url(company_name: str) -> str | None:
