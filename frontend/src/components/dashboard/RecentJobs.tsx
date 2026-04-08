@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 
 export function RecentJobs() {
   const { data } = useQuery({
-    queryKey: ["jobs", { is_new: true, size: 8 }],
-    queryFn: () => jobsApi.list({ is_new: true, size: 8 }).then((r) => r.data),
+    queryKey: ["jobs", { size: 8 }],
+    queryFn: () => jobsApi.list({ size: 8 }).then((r) => r.data),
   });
 
   return (

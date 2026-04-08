@@ -2,7 +2,7 @@
 
 import { useCompanies } from "@/hooks/useCompanies";
 import { useQueryClient } from "@tanstack/react-query";
-import { jobsApi } from "@/lib/api";
+import { scraperApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ export function JobFilters() {
   async function triggerScrape() {
     setScraping(true);
     try {
-      await jobsApi.triggerScrape();
+      await scraperApi.triggerAll();
       toast.success("Scrape job queued — check back in a few minutes");
       setTimeout(() => qc.invalidateQueries({ queryKey: ["jobs"] }), 5000);
     } catch {

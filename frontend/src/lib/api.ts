@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Company, Application, JobPosting, PaginatedResponse } from "@/types";
+import type { Company, Application, JobPosting, Notification, PaginatedResponse } from "@/types";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
@@ -60,6 +60,13 @@ export const scraperApi = {
     api.get<{ company_id: string; status: string; task_id: string | null }>(
       `/api/v1/scraper/status/${company_id}`
     ),
+};
+
+// ── Notifications ──────────────────────────────────────────────────────────
+export const notificationsApi = {
+  list: () => api.get<Notification[]>("/api/v1/notifications"),
+  markRead: (id: string) => api.patch(`/api/v1/notifications/${id}/read`),
+  markAllRead: () => api.patch("/api/v1/notifications/read-all"),
 };
 
 export default api;

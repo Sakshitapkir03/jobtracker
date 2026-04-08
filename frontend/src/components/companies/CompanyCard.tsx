@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/utils";
 import { Globe, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { jobsApi } from "@/lib/api";
+import { scraperApi } from "@/lib/api";
 import { toast } from "sonner";
 import Image from "next/image";
 
@@ -16,7 +16,7 @@ interface Props {
 export function CompanyCard({ company }: Props) {
   const qc = useQueryClient();
   const scrape = useMutation({
-    mutationFn: () => jobsApi.triggerScrape(company.id),
+    mutationFn: () => scraperApi.trigger(company.id),
     onSuccess: () => {
       toast.success(`Scraping ${company.name}…`);
       qc.invalidateQueries({ queryKey: ["jobs"] });

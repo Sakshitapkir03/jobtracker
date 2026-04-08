@@ -32,10 +32,10 @@ export function useCreateCompany() {
 export function useUploadCompaniesPDF() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => companiesApi.uploadPDF(file),
-    onSuccess: (res) => {
+    mutationFn: (file: File) => companiesApi.upload(file),
+    onSuccess: (res: { data: { imported: number } }) => {
       qc.invalidateQueries({ queryKey: ["companies"] });
-      toast.success(`Imported ${res.data.imported} companies from PDF`);
+      toast.success(`Imported ${res.data.imported} companies`);
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
