@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = ""
     secret_key: str = "dev-secret-key"
+    allowed_origins: str = "*"
 
     @property
     def is_production(self) -> bool:

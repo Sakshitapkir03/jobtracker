@@ -10,9 +10,11 @@ app = FastAPI(
     redoc_url=None,
 )
 
+_origins = [o.strip() for o in settings.allowed_origins.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
