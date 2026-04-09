@@ -1,7 +1,7 @@
 from math import ceil
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -22,10 +22,15 @@ async def list_jobs(
     db: AsyncSession = Depends(get_db),
 ):
     since = datetime.now(timezone.utc) - timedelta(days=days)
+    # Filter by posted_at when available, fall back to scraped_at
+    date_filter = or_(
+        JobPosting.posted_at >= since,
+        (JobPosting.posted_at.is_(None)) & (JobPosting.scraped_at >= since),
+    )
     q = (
         select(JobPosting)
         .options(selectinload(JobPosting.company))
-        .where(JobPosting.scraped_at >= since)
+        .where(date_filter)
         .order_by(JobPosting.scraped_at.desc())
     )
     if company_id:

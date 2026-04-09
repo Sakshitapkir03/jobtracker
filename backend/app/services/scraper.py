@@ -256,13 +256,20 @@ def _gh_job(j: dict) -> dict:
         location = ", ".join(o.get("name", "") for o in j["offices"] if o.get("name"))
     elif j.get("location", {}).get("name"):
         location = j["location"]["name"]
+    # Greenhouse returns updated_at as epoch ms
+    posted_at = None
+    if j.get("updated_at"):
+        try:
+            posted_at = datetime.fromtimestamp(j["updated_at"] / 1000, tz=timezone.utc)
+        except Exception:
+            pass
     return {
         "id": str(uuid.uuid4()),
         "title": j.get("title", "Unknown"),
         "url": j.get("absolute_url", ""),
         "location": location or None,
         "description": None,
-        "posted_at": None,
+        "posted_at": posted_at,
         "scraped_at": datetime.now(timezone.utc),
         "is_new": True,
     }
@@ -306,13 +313,20 @@ def _lever_slug(url: str) -> str | None:
 def _lever_job(j: dict) -> dict:
     cats = j.get("categories", {})
     location = cats.get("location") or cats.get("allLocations", [None])[0]
+    # Lever returns createdAt as epoch ms
+    posted_at = None
+    if j.get("createdAt"):
+        try:
+            posted_at = datetime.fromtimestamp(j["createdAt"] / 1000, tz=timezone.utc)
+        except Exception:
+            pass
     return {
         "id": str(uuid.uuid4()),
         "title": j.get("text", "Unknown"),
         "url": j.get("hostedUrl", j.get("applyUrl", "")),
         "location": location,
         "description": None,
-        "posted_at": None,
+        "posted_at": posted_at,
         "scraped_at": datetime.now(timezone.utc),
         "is_new": True,
     }
