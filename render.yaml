@@ -1,17 +1,24 @@
 services:
   - type: web
-    name: h1b-job-tracker-api
+    name: job-tracker-api
     env: python
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false          # fill in Render dashboard
+        sync: false          # set in Render dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false          # set to your Vercel frontend URL
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates a secure random value
       - key: ENVIRONMENT
         value: production
       - key: PLAYWRIGHT_HEADLESS
         value: "true"
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: WEB_CONCURRENCY
+        value: "2"

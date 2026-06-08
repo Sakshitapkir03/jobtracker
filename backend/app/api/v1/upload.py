@@ -1,6 +1,7 @@
 import logging
 import uuid as uuid_lib
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, Request, UploadFile, HTTPException
+from app.core.rate_limiter import limiter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -22,7 +23,9 @@ _INSERT_SQL = text(
 
 
 @router.post("/companies-pdf")
+@limiter.limit("10/minute")
 async def upload_companies_file(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
