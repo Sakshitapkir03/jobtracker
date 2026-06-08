@@ -8,7 +8,7 @@ const api = axios.create({
 
 // ── Companies ──────────────────────────────────────────────────────────────
 export const companiesApi = {
-  list: (params?: { page?: number; size?: number; search?: string }) =>
+  list: (params?: { page?: number; size?: number; search?: string; role_keyword?: string }) =>
     api.get<PaginatedResponse<Company>>("/api/v1/companies", { params }),
   get: (id: string) => api.get<Company>(`/api/v1/companies/${id}`),
   create: (data: Partial<Company>) => api.post<Company>("/api/v1/companies", data),
@@ -47,6 +47,7 @@ export const jobsApi = {
     keyword?: string;
     location?: string;
     days?: number;
+    entry_level?: boolean;
   }) => api.get<PaginatedResponse<JobPosting>>("/api/v1/jobs", { params }),
 };
 

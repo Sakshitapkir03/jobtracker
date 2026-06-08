@@ -20,6 +20,7 @@ export interface Company {
   notes: string | null;
   last_scraped_at: string | null;
   created_at: string;
+  job_count: number;
 }
 
 export interface Application {

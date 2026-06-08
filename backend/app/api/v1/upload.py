@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _BULK_BATCH = 500
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 
 _INSERT_SQL = text(
     "INSERT INTO companies (id, user_id, name, website, careers_url, industry, notes) "
@@ -41,7 +42,9 @@ async def upload_companies_file(
     if not (is_csv or is_pdf or is_excel):
         raise HTTPException(status_code=400, detail="Only PDF, CSV, or Excel files are supported")
 
-    contents = await file.read()
+    contents = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
 
     if is_csv:
         parsed = parse_companies_from_csv(contents)

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import DEFAULT_USER_ID
 from app.models.company import Company
+from app.models.job_posting import JobPosting
 from app.schemas.company import CompanyCreate, CompanyOut, CompanyUpdate, PaginatedCompanies
 
 router = APIRouter()
@@ -14,17 +15,47 @@ router = APIRouter()
 @router.get("", response_model=PaginatedCompanies)
 async def list_companies(
     page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=200),
+    size: int = Query(50, ge=1, le=200),
     search: str | None = None,
+    role_keyword: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Company)
-    if search:
-        q = q.where(Company.name.ilike(f"%{search}%"))
-    q = q.order_by(Company.name)
+    # Subquery: count scraped job postings per company
+    jc_sq = (
+        select(JobPosting.company_id, func.count(JobPosting.id).label("cnt"))
+        .group_by(JobPosting.company_id)
+        .subquery()
+    )
 
-    total = await db.scalar(select(func.count()).select_from(q.subquery()))
-    items = (await db.scalars(q.offset((page - 1) * size).limit(size))).all()
+    count_q = select(func.count()).select_from(Company)
+    data_q = (
+        select(Company, func.coalesce(jc_sq.c.cnt, 0).label("job_count"))
+        .outerjoin(jc_sq, Company.id == jc_sq.c.company_id)
+        .order_by(Company.name)
+    )
+
+    if search:
+        count_q = count_q.where(Company.name.ilike(f"%{search}%"))
+        data_q = data_q.where(Company.name.ilike(f"%{search}%"))
+
+    if role_keyword:
+        role_sq = (
+            select(JobPosting.company_id)
+            .where(JobPosting.title.ilike(f"%{role_keyword}%"))
+            .distinct()
+            .scalar_subquery()
+        )
+        count_q = count_q.where(Company.id.in_(role_sq))
+        data_q = data_q.where(Company.id.in_(role_sq))
+
+    total = await db.scalar(count_q)
+    rows = (await db.execute(data_q.offset((page - 1) * size).limit(size))).all()
+
+    items = []
+    for company, job_count in rows:
+        item = CompanyOut.model_validate(company)
+        item.job_count = job_count
+        items.append(item)
 
     return PaginatedCompanies(
         items=items, total=total, page=page, size=size,

@@ -2,30 +2,49 @@
 
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { companiesApi, scraperApi } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import {
   Building2, Upload, Play, RotateCcw, CheckCircle, XCircle,
-  Loader2, Search, ExternalLink,
+  Loader2, Search, ExternalLink, Pencil, Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import type { Company, ScrapeStatus } from "@/types";
 
 export function CompaniesPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleSearch, setRoleSearch] = useState("");
+  const [debouncedRole, setDebouncedRole] = useState("");
   const [page, setPage] = useState(1);
   const [scrapeStatus, setScrapeStatus] = useState<Record<string, ScrapeStatus>>({});
+  const [editingUrl, setEditingUrl] = useState<{ id: string; value: string } | null>(null);
+
+  function debounce(key: "search" | "role", value: string) {
+    const timerKey = `_dt_${key}` as any;
+    clearTimeout((window as any)[timerKey]);
+    (window as any)[timerKey] = setTimeout(() => {
+      if (key === "search") { setDebouncedSearch(value); setPage(1); }
+      else { setDebouncedRole(value); setPage(1); }
+    }, 300);
+  }
 
   const { data, isLoading } = useQuery({
-    queryKey: ["companies", { page, search: debouncedSearch }],
+    queryKey: ["companies", { page, search: debouncedSearch, role: debouncedRole }],
     queryFn: () =>
-      companiesApi.list({ page, size: 50, search: debouncedSearch || undefined }).then((r) => r.data),
+      companiesApi.list({
+        page,
+        size: 50,
+        search: debouncedSearch || undefined,
+        role_keyword: debouncedRole || undefined,
+      }).then((r) => r.data),
   });
 
   const uploadMutation = useMutation({
@@ -34,9 +53,17 @@ export function CompaniesPage() {
       qc.invalidateQueries({ queryKey: ["companies"] });
       toast.success(`Imported ${res.data.imported} companies`);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail ?? "Import failed");
+    onError: (err: any) => toast.error(err?.response?.data?.detail ?? "Import failed"),
+  });
+
+  const updateUrlMutation = useMutation({
+    mutationFn: ({ id, url }: { id: string; url: string }) =>
+      companiesApi.update(id, { careers_url: url || null } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["companies"] });
+      setEditingUrl(null);
     },
+    onError: () => toast.error("Failed to update URL"),
   });
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -49,9 +76,7 @@ export function CompaniesPage() {
     setScrapeStatus((s) => ({ ...s, [company.id]: "queued" }));
     try {
       await scraperApi.trigger(company.id);
-      toast.success(`Scraping ${company.name}…`);
       setScrapeStatus((s) => ({ ...s, [company.id]: "running" }));
-      // Poll for completion
       pollStatus(company.id);
     } catch {
       setScrapeStatus((s) => ({ ...s, [company.id]: "failed" }));
@@ -62,7 +87,7 @@ export function CompaniesPage() {
   async function scrapeAll() {
     try {
       await scraperApi.triggerAll();
-      toast.success("Scraping all companies in background…");
+      toast.success("Scraping all companies…");
     } catch {
       toast.error("Failed to trigger scrape");
     }
@@ -78,6 +103,7 @@ export function CompaniesPage() {
           clearInterval(interval);
           qc.invalidateQueries({ queryKey: ["companies"] });
           qc.invalidateQueries({ queryKey: ["jobs"] });
+          if (status === "done") toast.success("Scrape complete");
         }
       } catch {
         clearInterval(interval);
@@ -87,34 +113,54 @@ export function CompaniesPage() {
 
   function statusIcon(company: Company) {
     const status = scrapeStatus[company.id];
-    if (status === "running" || status === "queued") {
-      return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />;
-    }
-    if (status === "done") return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
-    if (status === "failed") return <XCircle className="h-3.5 w-3.5 text-red-500" />;
-    if (company.last_scraped_at) return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />;
+    if (status === "running" || status === "queued")
+      return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />;
+    if (status === "done")
+      return <CheckCircle className="h-3.5 w-3.5 text-green-400" />;
+    if (status === "failed")
+      return <XCircle className="h-3.5 w-3.5 text-error" />;
+    if (company.last_scraped_at)
+      return <CheckCircle className="h-3.5 w-3.5 text-on-surface-variant/40" />;
     return null;
   }
 
+  function careersHostname(url: string) {
+    try { return new URL(url).hostname.replace("www.", ""); }
+    catch { return url; }
+  }
+
+  const totalPages = data?.pages ?? 1;
+
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-5 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Companies</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {data?.total ?? 0} companies · Import your H1B Excel list to get started
+          <h1 className="font-display text-xl font-bold text-on-surface">Companies</h1>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            {data?.total ?? 0} companies tracked
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploadMutation.isPending}>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border border-outline text-on-surface hover:border-primary hover:text-primary bg-transparent"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploadMutation.isPending}
+          >
             {uploadMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Upload className="h-4 w-4 mr-2" />
             )}
-            Import Excel / CSV / PDF
+            Import
           </Button>
-          <Button onClick={scrapeAll}>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:opacity-90"
+            onClick={scrapeAll}
+          >
             <Play className="h-4 w-4 mr-2" />
             Scrape All
           </Button>
@@ -128,87 +174,181 @@ export function CompaniesPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-2">
-        <Input
-          className="max-w-xs"
-          placeholder="Search companies…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            clearTimeout((window as any)._searchTimer);
-            (window as any)._searchTimer = setTimeout(() => {
-              setDebouncedSearch(e.target.value);
-              setPage(1);
-            }, 300);
-          }}
-        />
+      {/* Search row */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant" />
+          <Input
+            className="pl-8 h-9 w-56 text-sm bg-surface-container-low border border-outline-variant focus:border-primary text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Search companies…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); debounce("search", e.target.value); }}
+          />
+        </div>
+        <div className="relative">
+          <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant" />
+          <Input
+            className="pl-8 h-9 w-64 text-sm bg-surface-container-low border border-outline-variant focus:border-primary text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Filter by role (e.g. Software Engineer)…"
+            value={roleSearch}
+            onChange={(e) => { setRoleSearch(e.target.value); debounce("role", e.target.value); }}
+          />
+        </div>
+        {debouncedRole && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-data">
+            <Briefcase className="h-3 w-3" />
+            {data?.total ?? 0} companies with "{debouncedRole}" roles
+          </div>
+        )}
       </div>
 
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-lg border bg-card animate-pulse" />
+            <div
+              key={i}
+              className="h-12 rounded-xl border border-outline-variant bg-surface-container-low animate-pulse"
+            />
           ))}
         </div>
       ) : !data?.items.length ? (
-        <div className="rounded-xl border bg-card p-12 text-center">
-          <Building2 className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="font-medium">No companies yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Click <strong>Import Excel</strong> to upload your H1B sponsor list.
+        <div className="rounded-xl border border-outline-variant bg-surface-container-low p-16 text-center">
+          <Building2 className="h-10 w-10 mx-auto text-on-surface-variant/30 mb-3" />
+          <p className="font-medium text-on-surface">
+            {debouncedRole ? `No companies have "${debouncedRole}" openings` : "No companies yet"}
+          </p>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {debouncedRole
+              ? "Try scraping companies first, or search a different role."
+              : "Click Import to upload your H1B Excel or CSV list."}
           </p>
         </div>
       ) : (
         <>
-          <div className="rounded-xl border overflow-hidden">
+          <div className="rounded-xl border border-outline-variant bg-surface-container-low overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">Company</th>
-                  <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Industry</th>
-                  <th className="text-left px-4 py-2.5 font-medium hidden lg:table-cell">Careers URL</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Last Scraped</th>
-                  <th className="px-4 py-2.5" />
+              <thead>
+                <tr className="border-b border-outline-variant bg-surface-container-lowest">
+                  <th className="text-left px-4 py-3 font-data text-xs text-on-surface-variant uppercase tracking-widest">
+                    Company
+                  </th>
+                  <th className="text-left px-4 py-3 font-data text-xs text-on-surface-variant uppercase tracking-widest hidden md:table-cell">
+                    Industry
+                  </th>
+                  <th className="text-left px-4 py-3 font-data text-xs text-on-surface-variant uppercase tracking-widest hidden lg:table-cell">
+                    Careers Page
+                  </th>
+                  <th className="text-left px-4 py-3 font-data text-xs text-on-surface-variant uppercase tracking-widest">
+                    Openings
+                  </th>
+                  <th className="text-left px-4 py-3 font-data text-xs text-on-surface-variant uppercase tracking-widest hidden xl:table-cell">
+                    Last Scraped
+                  </th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-outline-variant">
                 {data.items.map((company) => (
-                  <tr key={company.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={company.id} className="hover:bg-primary/5 transition-colors group">
+                    {/* Company name */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {statusIcon(company)}
-                        <span className="font-medium truncate max-w-[200px]">{company.name}</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 bg-surface-container-highest rounded border border-outline-variant flex items-center justify-center text-xs font-bold text-on-surface-variant shrink-0">
+                          {company.name[0]?.toUpperCase() ?? "?"}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {statusIcon(company)}
+                          <span className="font-medium text-on-surface truncate max-w-[160px]">
+                            {company.name}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+
+                    {/* Industry */}
+                    <td className="px-4 py-3 text-on-surface-variant text-sm hidden md:table-cell">
                       {company.industry ?? "—"}
                     </td>
+
+                    {/* Careers URL — editable, no "auto-discover" placeholder */}
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      {company.careers_url ? (
-                        <a
-                          href={company.careers_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline flex items-center gap-1 text-xs"
-                        >
-                          {new URL(company.careers_url).hostname}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                      {editingUrl?.id === company.id ? (
+                        <input
+                          autoFocus
+                          value={editingUrl.value}
+                          onChange={(e) => setEditingUrl({ id: company.id, value: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              updateUrlMutation.mutate({ id: company.id, url: editingUrl.value });
+                            if (e.key === "Escape") setEditingUrl(null);
+                          }}
+                          onBlur={() =>
+                            updateUrlMutation.mutate({ id: company.id, url: editingUrl.value })
+                          }
+                          className="text-xs border border-outline-variant rounded-md px-2 py-1 w-52 bg-surface-container text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="https://…"
+                        />
                       ) : (
-                        <span className="text-xs text-muted-foreground">Auto-discover on scrape</span>
+                        <div
+                          className="flex items-center gap-1.5 group/url cursor-pointer"
+                          onClick={() =>
+                            setEditingUrl({ id: company.id, value: company.careers_url ?? "" })
+                          }
+                        >
+                          {company.careers_url ? (
+                            <a
+                              href={company.careers_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-primary hover:underline flex items-center gap-1 text-xs font-data"
+                            >
+                              {careersHostname(company.careers_url)}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="text-xs text-on-surface-variant/40">—</span>
+                          )}
+                          <Pencil className="h-3 w-3 text-on-surface-variant opacity-0 group-hover/url:opacity-40 transition-opacity" />
+                        </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {company.last_scraped_at
-                        ? formatDistanceToNow(new Date(company.last_scraped_at), { addSuffix: true })
-                        : "Never"}
+
+                    {/* Openings count — links to job feed filtered by company */}
+                    <td className="px-4 py-3">
+                      {company.job_count > 0 ? (
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/jobs?company_id=${company.id}&company_name=${encodeURIComponent(company.name)}`
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-data hover:bg-primary/20 transition-colors"
+                        >
+                          <Briefcase className="h-3 w-3" />
+                          {company.job_count}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-on-surface-variant/40 font-data">—</span>
+                      )}
                     </td>
+
+                    {/* Last scraped */}
+                    <td className="px-4 py-3 text-xs text-on-surface-variant hidden xl:table-cell">
+                      {company.last_scraped_at ? (
+                        formatDistanceToNow(new Date(company.last_scraped_at), { addSuffix: true })
+                      ) : (
+                        <span className="text-on-surface-variant/40">Never</span>
+                      )}
+                    </td>
+
+                    {/* Scrape button */}
                     <td className="px-4 py-3">
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="h-7 w-7 p-0 text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => scrapeOne(company)}
                         disabled={
                           scrapeStatus[company.id] === "running" ||
@@ -224,24 +364,40 @@ export function CompaniesPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {data.pages > 1 && (
+          {totalPages > 1 && (
             <div className="flex items-center gap-2 justify-end">
               <Button
                 variant="outline"
                 size="sm"
+                className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-transparent"
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
               >
                 Previous
               </Button>
-              <span className="text-sm text-muted-foreground">
-                {page} / {data.pages}
-              </span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-8 h-8 rounded-md text-xs font-medium transition-colors ${
+                        page === p
+                          ? "bg-primary text-primary-foreground"
+                          : "text-on-surface-variant hover:text-primary border border-outline-variant"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page === data.pages}
+                className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-transparent"
+                disabled={page === totalPages}
                 onClick={() => setPage(page + 1)}
               >
                 Next

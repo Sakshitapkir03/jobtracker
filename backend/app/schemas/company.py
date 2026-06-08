@@ -29,6 +29,7 @@ class CompanyOut(CompanyBase):
     user_id: str
     last_scraped_at: datetime | None
     created_at: datetime
+    job_count: int = 0
 
     model_config = {"from_attributes": True}
 

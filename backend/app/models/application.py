@@ -25,7 +25,7 @@ class Application(Base):
     job_title: Mapped[str] = mapped_column(String(255), nullable=False)
     job_url: Mapped[str | None] = mapped_column(String(500))
     stage: Mapped[ApplicationStage] = mapped_column(
-        Enum(ApplicationStage), default=ApplicationStage.APPLIED
+        Enum(ApplicationStage, name="application_stage"), default=ApplicationStage.APPLIED
     )
     applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     notes: Mapped[str | None] = mapped_column(Text)

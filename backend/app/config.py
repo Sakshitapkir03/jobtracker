@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     resend_api_key: str = ""
     email_from: str = ""
-    secret_key: str = "dev-secret-key"
-    allowed_origins: str = "*"
+    secret_key: str = "dev-secret-key-change-in-production"
+    allowed_origins: str = "http://localhost:3000,http://localhost:3001"
 
     @property
     def is_production(self) -> bool:
