@@ -35,10 +35,17 @@ _LOG_CONFIG = {
 logging.config.dictConfig(_LOG_CONFIG)
 
 
+_logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        # Tables likely already exist; log and continue rather than crashing the deploy
+        _logger.warning("DB startup check skipped: %s", exc)
     yield
 
 
