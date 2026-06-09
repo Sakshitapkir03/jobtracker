@@ -79,7 +79,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 "grant_type": "authorization_code",
             },
         )
-        token_resp.raise_for_status()
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Google token error: {token_resp.text}")
         access_token = token_resp.json()["access_token"]
         user_resp = await client.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
