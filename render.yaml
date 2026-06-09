@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: job-tracker-api
+    name: h1b-job-tracker-api
     env: python
     plan: free
     rootDir: backend
