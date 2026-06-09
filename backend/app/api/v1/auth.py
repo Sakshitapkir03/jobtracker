@@ -1,3 +1,4 @@
+import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -11,6 +12,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user import UserRegister, UserLogin, UserOut, TokenOut
 
+_logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -80,6 +82,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             },
         )
         if token_resp.status_code != 200:
+            _logger.error("Google token exchange failed: %s | redirect_uri=%s/auth/google/callback", token_resp.text, settings.backend_url)
             raise HTTPException(status_code=400, detail=f"Google token error: {token_resp.text}")
         access_token = token_resp.json()["access_token"]
         user_resp = await client.get(
