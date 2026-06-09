@@ -7,24 +7,27 @@ import { authApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import type { User } from "@/types";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({ email: "", password: "", full_name: "" });
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
     setLoading(true);
     try {
-      const { data } = await authApi.login({ email, password });
+      const { data } = await authApi.register(form);
       login(data.access_token, data.user as User);
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Login failed";
+          ?.detail ?? "Registration failed";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -38,14 +41,13 @@ export default function LoginPage() {
       <div className="rounded-2xl border border-outline-variant bg-surface-container p-8 shadow-lg">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-on-surface font-display">
-            Welcome back
+            Create account
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            Sign in to your account
+            Start tracking H1B job opportunities
           </p>
         </div>
 
-        {/* OAuth buttons */}
         <div className="flex flex-col gap-3 mb-6">
           <a
             href={`${apiBase}/auth/google`}
@@ -96,13 +98,25 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-on-surface-variant mb-1.5">
+              Full name
+            </label>
+            <input
+              type="text"
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              className="w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              placeholder="Jane Smith"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-on-surface-variant mb-1.5">
               Email
             </label>
             <input
               type="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               placeholder="you@example.com"
             />
@@ -114,10 +128,10 @@ export default function LoginPage() {
             <input
               type="password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-              placeholder="••••••••"
+              placeholder="Min. 8 characters"
             />
           </div>
           <button
@@ -125,17 +139,17 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-on-surface-variant">
-          Don&apos;t have an account?{" "}
+          Already have an account?{" "}
           <Link
-            href="/register"
+            href="/login"
             className="text-primary hover:underline font-medium"
           >
-            Sign up
+            Sign in
           </Link>
         </p>
       </div>

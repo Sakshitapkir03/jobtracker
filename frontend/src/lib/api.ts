@@ -1,10 +1,32 @@
 import axios from "axios";
-import type { Company, Application, JobPosting, Notification, PaginatedResponse } from "@/types";
+import type { Alert, Company, Application, JobPosting, Notification, PaginatedResponse } from "@/types";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
   headers: { "Content-Type": "application/json" },
 });
+
+// Attach JWT on every request
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("jt_token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// On 401, clear auth and redirect to login
+api.interceptors.response.use(
+  (r) => r,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("jt_token");
+      localStorage.removeItem("jt_user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ── Companies ──────────────────────────────────────────────────────────────
 export const companiesApi = {
@@ -68,6 +90,23 @@ export const notificationsApi = {
   list: () => api.get<Notification[]>("/api/v1/notifications"),
   markRead: (id: string) => api.patch(`/api/v1/notifications/${id}/read`),
   markAllRead: () => api.patch("/api/v1/notifications/read-all"),
+};
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+export const authApi = {
+  register: (data: { email: string; password: string; full_name?: string }) =>
+    api.post("/auth/register", data),
+  login: (data: { email: string; password: string }) =>
+    api.post("/auth/login", data),
+  me: () => api.get("/auth/me"),
+};
+
+// ── Alerts ─────────────────────────────────────────────────────────────────
+export const alertsApi = {
+  list: () => api.get<Alert[]>("/api/v1/alerts"),
+  create: (role_keyword: string) =>
+    api.post<Alert>("/api/v1/alerts", { role_keyword }),
+  delete: (id: string) => api.delete(`/api/v1/alerts/${id}`),
 };
 
 export default api;

@@ -65,3 +65,27 @@ export interface PaginatedResponse<T> {
   size: number;
   pages: number;
 }
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  oauth_provider: string | null;
+  created_at: string;
+}
+
+export interface Alert {
+  id: string;
+  user_id: string;
+  role_keyword: string;
+  is_active: boolean;
+  last_notified_at: string | null;
+  created_at: string;
+}
+
+export interface AuthToken {
+  access_token: string;
+  token_type: string;
+  user: User;
+}

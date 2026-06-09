@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key-change-in-production"
     allowed_origins: str = "http://localhost:3000,http://localhost:3001"
 
+    # Auth
+    access_token_expire_minutes: int = 10080  # 7 days
+    frontend_url: str = "http://localhost:3001"
+    # OAuth — set in dashboard, leave empty to disable
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

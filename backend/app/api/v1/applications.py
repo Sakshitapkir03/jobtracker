@@ -6,8 +6,9 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.dependencies import DEFAULT_USER_ID
+from app.dependencies import DEFAULT_USER_ID, get_current_user
 from app.models.application import Application, ApplicationStage
+from app.models.user import User
 from app.schemas.application import (
     ApplicationCreate, ApplicationOut, ApplicationUpdate, PaginatedApplications,
 )
@@ -21,11 +22,13 @@ async def list_applications(
     size: int = Query(50, ge=1, le=1000),
     stage: ApplicationStage | None = None,
     company_id: str | None = None,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     q = (
         select(Application)
         .options(selectinload(Application.company))
+        .where(Application.user_id == current_user.id)
         .order_by(Application.applied_at.desc())
     )
     if stage:
@@ -55,10 +58,14 @@ async def get_application(app_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=ApplicationOut, status_code=status.HTTP_201_CREATED)
-async def create_application(data: ApplicationCreate, db: AsyncSession = Depends(get_db)):
+async def create_application(
+    data: ApplicationCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     app = Application(
         id=str(uuid.uuid4()),
-        user_id=DEFAULT_USER_ID,
+        user_id=current_user.id,
         updated_at=datetime.now(timezone.utc),
         **data.model_dump(),
     )

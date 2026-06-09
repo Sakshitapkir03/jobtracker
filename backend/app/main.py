@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.router import api_router
+from app.api.router import api_router, auth_router
 from app.config import settings
 from app.core.rate_limiter import limiter
 from app.database import Base, engine
@@ -17,6 +17,8 @@ import app.models.application  # noqa: F401
 import app.models.company  # noqa: F401
 import app.models.job_posting  # noqa: F401
 import app.models.notification  # noqa: F401
+import app.models.user     # noqa: F401
+import app.models.alert    # noqa: F401
 
 _LOG_CONFIG = {
     "version": 1,
@@ -83,6 +85,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
 )
 
+app.include_router(auth_router)          # /auth/...
 app.include_router(api_router, prefix="/api/v1")
 
 

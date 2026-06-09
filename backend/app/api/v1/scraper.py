@@ -1,8 +1,10 @@
 import asyncio
 import logging
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from app.core.rate_limiter import limiter
+from app.dependencies import get_current_user
+from app.models.user import User
 from app.services.cache import get_status, set_status
 from app.tasks.scraping_tasks import _scrape_company, _scrape_all_companies
 
@@ -30,7 +32,11 @@ async def _run_all():
 
 @router.post("/trigger")
 @limiter.limit("5/minute")
-async def trigger_scrape(request: Request, body: TriggerRequest):
+async def trigger_scrape(
+    request: Request,
+    body: TriggerRequest,
+    current_user: User = Depends(get_current_user),
+):
     if body.company_id:
         set_status(body.company_id, "queued")
         asyncio.create_task(_run_one(body.company_id))

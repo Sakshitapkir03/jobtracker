@@ -4,12 +4,14 @@ import { Bell, Search, Settings } from "lucide-react";
 import { NotificationPanel } from "@/components/layout/NotificationPanel";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
 export function Header() {
   useNotifications();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const [open, setOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-outline-variant bg-background/80 backdrop-blur-md px-6 shrink-0 gap-4 sticky top-0 z-50">
@@ -42,8 +44,25 @@ export function Header() {
         <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
           <Settings className="h-5 w-5" />
         </button>
-        <div className="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center text-xs font-bold text-on-surface-variant">
-          S
+        <div className="flex items-center gap-2">
+          <button
+            onClick={logout}
+            className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+          >
+            Sign out
+          </button>
+          <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary overflow-hidden">
+            {user?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatar_url}
+                alt="avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              (user?.full_name?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()
+            )}
+          </div>
         </div>
       </div>
     </header>

@@ -5,7 +5,8 @@ from app.core.rate_limiter import limiter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.dependencies import DEFAULT_USER_ID
+from app.dependencies import get_current_user
+from app.models.user import User
 from app.services.pdf_parser import parse_companies_from_pdf
 from app.services.csv_parser import parse_companies_from_csv
 from app.services.excel_parser import parse_companies_from_excel
@@ -27,6 +28,7 @@ _INSERT_SQL = text(
 async def upload_companies_file(
     request: Request,
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     filename = (file.filename or "").lower()
@@ -64,7 +66,7 @@ async def upload_companies_file(
     rows = [
         {
             "id": str(uuid_lib.uuid4()),
-            "user_id": DEFAULT_USER_ID,
+            "user_id": current_user.id,
             "name": d.get("name"),
             "website": d.get("website"),
             "careers_url": d.get("careers_url"),
