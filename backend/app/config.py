@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # Auth
     access_token_expire_minutes: int = 10080  # 7 days
     frontend_url: str = "http://localhost:3001"
+    backend_url: str = "http://localhost:8000"
     # OAuth — set in dashboard, leave empty to disable
     google_client_id: str = ""
     google_client_secret: str = ""

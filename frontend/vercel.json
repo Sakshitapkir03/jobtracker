@@ -4,6 +4,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://jobtracker-1qs1.onrender.com/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://jobtracker-1qs1.onrender.com/auth/:path*"
     }
   ]
 }

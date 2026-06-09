@@ -10,7 +10,11 @@ services:
       - key: DATABASE_URL
         sync: false          # set in Render dashboard
       - key: ALLOWED_ORIGINS
-        sync: false          # set to your Vercel frontend URL
+        value: "https://frontend-mu-seven-30.vercel.app"
+      - key: FRONTEND_URL
+        value: "https://frontend-mu-seven-30.vercel.app"
+      - key: BACKEND_URL
+        value: "https://jobtracker-1qs1.onrender.com"
       - key: SECRET_KEY
         generateValue: true  # Render auto-generates a secure random value
       - key: ENVIRONMENT

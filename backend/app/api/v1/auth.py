@@ -56,7 +56,7 @@ async def google_login():
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
     params = (
         f"client_id={settings.google_client_id}"
-        f"&redirect_uri={settings.frontend_url.rstrip('/')}/api/auth/google/callback"
+        f"&redirect_uri={settings.backend_url.rstrip('/')}/auth/google/callback"
         f"&response_type=code"
         f"&scope=openid%20email%20profile"
         f"&access_type=offline"
@@ -75,7 +75,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 "code": code,
                 "client_id": settings.google_client_id,
                 "client_secret": settings.google_client_secret,
-                "redirect_uri": f"{settings.frontend_url.rstrip('/')}/api/auth/google/callback",
+                "redirect_uri": f"{settings.backend_url.rstrip('/')}/auth/google/callback",
                 "grant_type": "authorization_code",
             },
         )
@@ -104,7 +104,7 @@ async def github_login():
         raise HTTPException(status_code=501, detail="GitHub OAuth not configured")
     params = (
         f"client_id={settings.github_client_id}"
-        f"&redirect_uri={settings.frontend_url.rstrip('/')}/api/auth/github/callback"
+        f"&redirect_uri={settings.backend_url.rstrip('/')}/auth/github/callback"
         f"&scope=read:user%20user:email"
     )
     return RedirectResponse(f"https://github.com/login/oauth/authorize?{params}")
@@ -122,7 +122,7 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
                 "client_id": settings.github_client_id,
                 "client_secret": settings.github_client_secret,
                 "code": code,
-                "redirect_uri": f"{settings.frontend_url.rstrip('/')}/api/auth/github/callback",
+                "redirect_uri": f"{settings.backend_url.rstrip('/')}/auth/github/callback",
             },
         )
         token_resp.raise_for_status()
