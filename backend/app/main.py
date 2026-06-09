@@ -91,4 +91,10 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health", tags=["ops"])
 async def health():
-    return {"status": "ok", "version": app.version, "env": settings.environment}
+    return {
+        "status": "ok",
+        "version": app.version,
+        "env": settings.environment,
+        "google_oauth_ready": bool(settings.google_client_id and settings.google_client_secret),
+        "backend_url": settings.backend_url,
+    }
