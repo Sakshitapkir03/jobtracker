@@ -25,3 +25,9 @@ services:
         value: "3.12.0"
       - key: WEB_CONCURRENCY
         value: "2"
+      - key: GOOGLE_CLIENT_ID
+        sync: false          # set in Render dashboard
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false          # set in Render dashboard
+      - key: APOLLO_API_KEY
+        sync: false          # set in Render dashboard
