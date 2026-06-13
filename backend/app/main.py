@@ -22,6 +22,7 @@ import app.models.job_posting  # noqa: F401
 import app.models.notification  # noqa: F401
 import app.models.user     # noqa: F401
 import app.models.alert    # noqa: F401
+import app.models.contact  # noqa: F401
 
 _LOG_CONFIG = {
     "version": 1,

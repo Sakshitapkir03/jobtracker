@@ -25,3 +25,4 @@ class Company(Base):
 
     applications: Mapped[list["Application"]] = relationship(back_populates="company")
     job_postings: Mapped[list["JobPosting"]] = relationship(back_populates="company")
+    contacts = relationship("Contact", back_populates="company", cascade="all, delete-orphan")

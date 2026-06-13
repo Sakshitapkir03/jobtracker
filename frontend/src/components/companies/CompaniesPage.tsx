@@ -7,12 +7,13 @@ import { companiesApi, scraperApi } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import {
   Building2, Upload, Play, RotateCcw, CheckCircle, XCircle,
-  Loader2, Search, ExternalLink, Pencil, Briefcase,
+  Loader2, Search, ExternalLink, Pencil, Briefcase, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type { Company, ScrapeStatus } from "@/types";
+import ContactsDialog from "@/components/contacts/ContactsDialog";
 
 export function CompaniesPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export function CompaniesPage() {
   const [page, setPage] = useState(1);
   const [scrapeStatus, setScrapeStatus] = useState<Record<string, ScrapeStatus>>({});
   const [editingUrl, setEditingUrl] = useState<{ id: string; value: string } | null>(null);
+  const [contactsCompany, setContactsCompany] = useState<Company | null>(null);
 
   function debounce(key: "search" | "role", value: string) {
     const timerKey = `_dt_${key}` as any;
@@ -343,20 +345,31 @@ export function CompaniesPage() {
                       )}
                     </td>
 
-                    {/* Scrape button */}
+                    {/* Action buttons */}
                     <td className="px-4 py-3">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0 text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => scrapeOne(company)}
-                        disabled={
-                          scrapeStatus[company.id] === "running" ||
-                          scrapeStatus[company.id] === "queued"
-                        }
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-on-surface-variant hover:text-on-surface"
+                          onClick={() => setContactsCompany(company)}
+                          title="Find Contacts"
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-on-surface-variant hover:text-on-surface"
+                          onClick={() => scrapeOne(company)}
+                          disabled={
+                            scrapeStatus[company.id] === "running" ||
+                            scrapeStatus[company.id] === "queued"
+                          }
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -405,6 +418,15 @@ export function CompaniesPage() {
             </div>
           )}
         </>
+      )}
+
+      {contactsCompany && (
+        <ContactsDialog
+          companyId={contactsCompany.id}
+          companyName={contactsCompany.name}
+          open={!!contactsCompany}
+          onClose={() => setContactsCompany(null)}
+        />
       )}
     </div>
   );

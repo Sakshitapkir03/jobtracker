@@ -18,27 +18,26 @@ async def list_all_contacts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    rows = await db.execute(
+    result = await db.execute(
         select(Contact, Company.name.label("company_name"))
         .join(Company, Contact.company_id == Company.id)
         .where(Contact.user_id == current_user.id)
         .order_by(Company.name, Contact.name)
     )
-    results = []
-    for contact, company_name in rows:
-        out = ContactWithCompanyOut(
-            id=contact.id,
-            user_id=contact.user_id,
-            company_id=contact.company_id,
-            name=contact.name,
-            title=contact.title,
-            email=contact.email,
-            linkedin_url=contact.linkedin_url,
-            created_at=contact.created_at,
+    return [
+        ContactWithCompanyOut(
+            id=c.id,
+            user_id=c.user_id,
+            company_id=c.company_id,
+            name=c.name,
+            title=c.title,
+            email=c.email,
+            linkedin_url=c.linkedin_url,
+            created_at=c.created_at,
             company_name=company_name,
         )
-        results.append(out)
-    return results
+        for c, company_name in result.all()
+    ]
 
 
 @router.get("/{company_id}", response_model=list[ContactOut])

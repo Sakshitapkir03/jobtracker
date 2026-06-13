@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key-change-in-production"
     allowed_origins: str = "http://localhost:3000,http://localhost:3001"
 
+    # Apollo.io
+    apollo_api_key: str = ""
+
     # Auth
     access_token_expire_minutes: int = 10080  # 7 days
     frontend_url: str = "http://localhost:3001"
