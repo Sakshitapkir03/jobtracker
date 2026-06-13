@@ -26,6 +26,7 @@ async def search_contacts(company_name: str, website: str | None = None) -> list
 
     domain = _extract_domain(website)
     payload: dict = {
+        "api_key": settings.apollo_api_key,
         "per_page": 10,
         "page": 1,
         "person_titles": _TITLES,
@@ -39,7 +40,7 @@ async def search_contacts(company_name: str, website: str | None = None) -> list
         resp = await client.post(
             "https://api.apollo.io/v1/mixed_people/search",
             json=payload,
-            headers={"x-api-key": settings.apollo_api_key, "Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Cache-Control": "no-cache"},
         )
         if resp.status_code != 200:
             return []
