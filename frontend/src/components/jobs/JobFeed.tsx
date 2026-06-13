@@ -43,12 +43,14 @@ function JobFeedInner() {
   const [entryLevel, setEntryLevel] = useState(false);
   const [companyId, setCompanyId] = useState(urlCompanyId);
   const [companyName, setCompanyName] = useState(urlCompanyName);
+  const [companySearch, setCompanySearch] = useState("");
   const [committed, setCommitted] = useState({
     keyword: "",
     location: "",
     days: 7,
     entryLevel: false,
     companyId: urlCompanyId,
+    companySearch: "",
   });
   const [applying, setApplying] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -63,7 +65,7 @@ function JobFeedInner() {
   }, [searchParams]);
 
   function commit() {
-    setCommitted({ keyword, location, days, entryLevel, companyId });
+    setCommitted({ keyword, location, days, entryLevel, companyId, companySearch });
   }
 
   function clearCompanyFilter() {
@@ -71,6 +73,11 @@ function JobFeedInner() {
     setCompanyName("");
     setCommitted((c) => ({ ...c, companyId: "" }));
     router.replace("/jobs");
+  }
+
+  function clearCompanySearch() {
+    setCompanySearch("");
+    setCommitted((c) => ({ ...c, companySearch: "" }));
   }
 
   const { data, isLoading } = useQuery({
@@ -83,6 +90,7 @@ function JobFeedInner() {
           days: committed.days,
           entry_level: committed.entryLevel || undefined,
           company_id: committed.companyId || undefined,
+          company_name: committed.companySearch || undefined,
           size: 100,
         })
         .then((r) => r.data),
@@ -118,7 +126,7 @@ function JobFeedInner() {
   }
 
   const hasFilters =
-    committed.keyword || committed.location || committed.days !== 7 || committed.entryLevel;
+    committed.keyword || committed.location || committed.days !== 7 || committed.entryLevel || committed.companySearch;
 
   return (
     <div className="p-6 space-y-5 max-w-4xl">
@@ -172,6 +180,24 @@ function JobFeedInner() {
               onChange={(e) => setLocation(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && commit()}
             />
+          </div>
+          <div className="relative w-44">
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-on-surface-variant" />
+            <Input
+              className="pl-8 h-9 text-sm bg-surface-container border border-outline-variant focus:border-primary text-on-surface placeholder:text-on-surface-variant"
+              placeholder="Company name…"
+              value={companySearch}
+              onChange={(e) => setCompanySearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && commit()}
+            />
+            {companySearch && (
+              <button
+                onClick={clearCompanySearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -236,7 +262,8 @@ function JobFeedInner() {
                   setLocation("");
                   setDays(7);
                   setEntryLevel(false);
-                  setCommitted({ keyword: "", location: "", days: 7, entryLevel: false, companyId });
+                  setCompanySearch("");
+                  setCommitted({ keyword: "", location: "", days: 7, entryLevel: false, companyId, companySearch: "" });
                 }}
                 className="text-primary hover:underline"
               >

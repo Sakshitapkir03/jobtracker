@@ -66,6 +66,7 @@ export const jobsApi = {
     page?: number;
     size?: number;
     company_id?: string;
+    company_name?: string;
     keyword?: string;
     location?: string;
     days?: number;

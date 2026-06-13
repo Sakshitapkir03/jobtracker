@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.job_posting import JobPosting
+from app.models.company import Company
 from app.schemas.job_posting import JobPostingOut, PaginatedJobPostings
 
 router = APIRouter()
@@ -35,6 +36,7 @@ async def list_jobs(
     page: int = Query(1, ge=1),
     size: int = Query(50, ge=1, le=200),
     company_id: str | None = None,
+    company_name: str | None = None,
     keyword: str | None = None,
     location: str | None = None,
     days: int = Query(7, ge=1, le=30),
@@ -54,6 +56,10 @@ async def list_jobs(
     )
     if company_id:
         q = q.where(JobPosting.company_id == company_id)
+    if company_name:
+        q = q.join(Company, JobPosting.company_id == Company.id).where(
+            Company.name.ilike(f"%{company_name}%")
+        )
     if keyword:
         q = q.where(JobPosting.title.ilike(f"%{keyword}%"))
     if location:
