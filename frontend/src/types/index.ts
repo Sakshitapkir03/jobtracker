@@ -89,3 +89,15 @@ export interface AuthToken {
   token_type: string;
   user: User;
 }
+
+export interface Contact {
+  id: string;
+  user_id: string;
+  company_id: string;
+  name: string;
+  title: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  created_at: string;
+  company_name?: string;
+}

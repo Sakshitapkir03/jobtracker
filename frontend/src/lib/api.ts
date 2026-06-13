@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Alert, Company, Application, JobPosting, Notification, PaginatedResponse } from "@/types";
+import type { Alert, Company, Application, JobPosting, Notification, PaginatedResponse, Contact } from "@/types";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "",
@@ -99,6 +99,13 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post("/auth/login", data),
   me: () => api.get("/auth/me"),
+};
+
+// ── Contacts ───────────────────────────────────────────────────────────────
+export const contactsApi = {
+  listAll: () => api.get<Contact[]>("/api/v1/contacts"),
+  list: (companyId: string) => api.get<Contact[]>(`/api/v1/contacts/${companyId}`),
+  search: (companyId: string) => api.post<Contact[]>(`/api/v1/contacts/${companyId}/search`),
 };
 
 // ── Alerts ─────────────────────────────────────────────────────────────────

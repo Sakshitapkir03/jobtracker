@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import companies, applications, jobs, notifications, upload, scraper, alerts
+from app.api.v1 import companies, applications, jobs, notifications, upload, scraper, alerts, contacts
 from app.api.v1 import auth
 
 api_router = APIRouter()
@@ -15,3 +15,4 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(upload.router, prefix="/upload", tags=["upload"])
 api_router.include_router(scraper.router, prefix="/scraper", tags=["scraper"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
+api_router.include_router(contacts.router, prefix="/contacts", tags=["contacts"])
