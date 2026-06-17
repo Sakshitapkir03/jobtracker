@@ -35,8 +35,8 @@ async def list_companies(
     )
 
     if search:
-        count_q = count_q.where(Company.name.ilike(f"%{search}%"))
-        data_q = data_q.where(Company.name.ilike(f"%{search}%"))
+        count_q = count_q.where(Company.name.ilike(f"{search}%"))
+        data_q = data_q.where(Company.name.ilike(f"{search}%"))
 
     if role_keyword:
         role_sq = (
