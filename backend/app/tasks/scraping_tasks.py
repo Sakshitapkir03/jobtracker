@@ -31,7 +31,13 @@ async def _scrape_company(company_id: str) -> dict:
             await db.flush()
 
         logger.info("Scraping %s → %s", company.name, company.careers_url)
-        raw_jobs = await scrape_company_jobs(company.careers_url)
+        try:
+            raw_jobs = await scrape_company_jobs(company.careers_url)
+        except Exception as exc:
+            logger.warning("Scrape error for %s: %s", company.name, exc)
+            company.last_scraped_at = datetime.now(timezone.utc)
+            await db.commit()
+            return {"company": company.name, "new_jobs": 0}
 
         new_count = 0
         for job_data in raw_jobs:

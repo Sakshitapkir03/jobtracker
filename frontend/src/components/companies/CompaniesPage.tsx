@@ -28,6 +28,7 @@ export function CompaniesPage() {
   const [scrapeStatus, setScrapeStatus] = useState<Record<string, ScrapeStatus>>({});
   const [editingUrl, setEditingUrl] = useState<{ id: string; value: string } | null>(null);
   const [contactsCompany, setContactsCompany] = useState<Company | null>(null);
+  const [isScrapingAll, setIsScrapingAll] = useState(false);
 
   function debounce(key: "search" | "role", value: string) {
     const timerKey = `_dt_${key}` as any;
@@ -56,6 +57,7 @@ export function CompaniesPage() {
     initialPageParam: 1,
     getNextPageParam: (lastPage: any, _: any, lastPageParam: any) =>
       lastPageParam < lastPage.pages ? lastPageParam + 1 : undefined,
+    refetchInterval: isScrapingAll ? 15_000 : false,
   });
 
   const allCompanies = data?.pages.flatMap((p: any) => p.items) ?? [];
@@ -116,7 +118,9 @@ export function CompaniesPage() {
   async function scrapeAll() {
     try {
       await scraperApi.triggerAll();
-      toast.success("Scraping all companies…");
+      toast.success("Scraping all companies… this may take a few minutes.");
+      setIsScrapingAll(true);
+      setTimeout(() => setIsScrapingAll(false), 10 * 60 * 1000);
     } catch {
       toast.error("Failed to trigger scrape");
     }
@@ -187,9 +191,14 @@ export function CompaniesPage() {
             size="sm"
             className="bg-primary text-primary-foreground hover:opacity-90"
             onClick={scrapeAll}
+            disabled={isScrapingAll}
           >
-            <Play className="h-4 w-4 mr-2" />
-            Scrape All
+            {isScrapingAll ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {isScrapingAll ? "Scraping…" : "Scrape All"}
           </Button>
           <input
             ref={fileRef}
