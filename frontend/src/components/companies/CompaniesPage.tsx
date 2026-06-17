@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { companiesApi, scraperApi } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
@@ -19,12 +19,12 @@ export function CompaniesPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleSearch, setRoleSearch] = useState("");
   const [debouncedRole, setDebouncedRole] = useState("");
-  const [page, setPage] = useState(1);
   const [scrapeStatus, setScrapeStatus] = useState<Record<string, ScrapeStatus>>({});
   const [editingUrl, setEditingUrl] = useState<{ id: string; value: string } | null>(null);
   const [contactsCompany, setContactsCompany] = useState<Company | null>(null);
@@ -33,21 +33,48 @@ export function CompaniesPage() {
     const timerKey = `_dt_${key}` as any;
     clearTimeout((window as any)[timerKey]);
     (window as any)[timerKey] = setTimeout(() => {
-      if (key === "search") { setDebouncedSearch(value); setPage(1); }
-      else { setDebouncedRole(value); setPage(1); }
+      if (key === "search") setDebouncedSearch(value);
+      else setDebouncedRole(value);
     }, 300);
   }
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["companies", { page, search: debouncedSearch, role: debouncedRole }],
-    queryFn: () =>
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["companies", { search: debouncedSearch, role: debouncedRole }],
+    queryFn: ({ pageParam }) =>
       companiesApi.list({
-        page,
+        page: pageParam as number,
         size: 50,
         search: debouncedSearch || undefined,
         role_keyword: debouncedRole || undefined,
       }).then((r) => r.data),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any, _: any, lastPageParam: any) =>
+      lastPageParam < lastPage.pages ? lastPageParam + 1 : undefined,
   });
+
+  const allCompanies = data?.pages.flatMap((p: any) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => companiesApi.upload(file),
@@ -131,8 +158,6 @@ export function CompaniesPage() {
     catch { return url; }
   }
 
-  const totalPages = data?.pages ?? 1;
-
   return (
     <div className="p-6 space-y-5 max-w-5xl">
       {/* Header */}
@@ -140,7 +165,7 @@ export function CompaniesPage() {
         <div>
           <h1 className="font-display text-xl font-bold text-on-surface">Companies</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {data?.total ?? 0} companies tracked
+            {total} companies tracked
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -199,7 +224,7 @@ export function CompaniesPage() {
         {debouncedRole && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-data">
             <Briefcase className="h-3 w-3" />
-            {data?.total ?? 0} companies with "{debouncedRole}" roles
+            {total} companies with "{debouncedRole}" roles
           </div>
         )}
       </div>
@@ -214,7 +239,7 @@ export function CompaniesPage() {
             />
           ))}
         </div>
-      ) : !data?.items.length ? (
+      ) : !allCompanies.length ? (
         <div className="rounded-xl border border-outline-variant bg-surface-container-low p-16 text-center">
           <Building2 className="h-10 w-10 mx-auto text-on-surface-variant/30 mb-3" />
           <p className="font-medium text-on-surface">
@@ -251,7 +276,7 @@ export function CompaniesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant">
-                {data.items.map((company) => (
+                {allCompanies.map((company) => (
                   <tr key={company.id} className="hover:bg-primary/5 transition-colors group">
                     {/* Company name */}
                     <td className="px-4 py-3">
@@ -273,7 +298,7 @@ export function CompaniesPage() {
                       {company.industry ?? "—"}
                     </td>
 
-                    {/* Careers URL — editable, no "auto-discover" placeholder */}
+                    {/* Careers URL */}
                     <td className="px-4 py-3 hidden lg:table-cell">
                       {editingUrl?.id === company.id ? (
                         <input
@@ -317,7 +342,7 @@ export function CompaniesPage() {
                       )}
                     </td>
 
-                    {/* Openings count — links to job feed filtered by company */}
+                    {/* Openings count */}
                     <td className="px-4 py-3">
                       {company.job_count > 0 ? (
                         <button
@@ -377,44 +402,11 @@ export function CompaniesPage() {
             </table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center gap-2 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-transparent"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  const p = i + 1;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-md text-xs font-medium transition-colors ${
-                        page === p
-                          ? "bg-primary text-primary-foreground"
-                          : "text-on-surface-variant hover:text-primary border border-outline-variant"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary bg-transparent"
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </Button>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-4" />
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-5 w-5 animate-spin text-on-surface-variant" />
             </div>
           )}
         </>
