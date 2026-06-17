@@ -40,7 +40,7 @@ function JobFeedInner() {
 
   const [keyword, setKeyword] = useState("");
   const [location, setLocation] = useState("");
-  const [days, setDays] = useState<number | null>(urlCompanyId ? null : 7);
+  const [days, setDays] = useState<number | null>(7);
   const [entryLevel, setEntryLevel] = useState(false);
   const [companyId, setCompanyId] = useState(urlCompanyId);
   const [companyName, setCompanyName] = useState(urlCompanyName);
@@ -55,7 +55,7 @@ function JobFeedInner() {
   }>({
     keyword: "",
     location: "",
-    days: urlCompanyId ? null : 7,
+    days: 7,
     entryLevel: false,
     companyId: urlCompanyId,
     companySearch: "",
@@ -69,12 +69,7 @@ function JobFeedInner() {
     const cname = searchParams.get("company_name") ?? "";
     setCompanyId(cid);
     setCompanyName(cname);
-    if (cid) {
-      setDays(null);
-      setCommitted((c) => ({ ...c, companyId: cid, days: null }));
-    } else {
-      setCommitted((c) => ({ ...c, companyId: cid }));
-    }
+    setCommitted((c) => ({ ...c, companyId: cid }));
   }, [searchParams]);
 
   function commit() {
@@ -271,7 +266,7 @@ function JobFeedInner() {
             {hasFilters && (
               <button
                 onClick={() => {
-                  const defaultDays = companyId ? null : 7;
+                  const defaultDays = 7;
                   setKeyword("");
                   setLocation("");
                   setDays(defaultDays);

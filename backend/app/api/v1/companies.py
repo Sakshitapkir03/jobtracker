@@ -1,5 +1,6 @@
 import uuid
 from math import ceil
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,9 +21,11 @@ async def list_companies(
     role_keyword: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    # Subquery: count scraped job postings per company
+    # Subquery: count job postings scraped in the past 7 days per company
+    since = datetime.now(timezone.utc) - timedelta(days=7)
     jc_sq = (
         select(JobPosting.company_id, func.count(JobPosting.id).label("cnt"))
+        .where(JobPosting.scraped_at >= since)
         .group_by(JobPosting.company_id)
         .subquery()
     )
