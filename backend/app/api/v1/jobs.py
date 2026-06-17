@@ -39,21 +39,21 @@ async def list_jobs(
     company_name: str | None = None,
     keyword: str | None = None,
     location: str | None = None,
-    days: int = Query(7, ge=1, le=30),
+    days: int | None = Query(default=None, ge=1),
     entry_level: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    date_filter = or_(
-        JobPosting.posted_at >= since,
-        (JobPosting.posted_at.is_(None)) & (JobPosting.scraped_at >= since),
-    )
     q = (
         select(JobPosting)
         .options(selectinload(JobPosting.company))
-        .where(date_filter)
         .order_by(JobPosting.scraped_at.desc())
     )
+    if days is not None:
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        q = q.where(or_(
+            JobPosting.posted_at >= since,
+            (JobPosting.posted_at.is_(None)) & (JobPosting.scraped_at >= since),
+        ))
     if company_id:
         q = q.where(JobPosting.company_id == company_id)
     if company_name:

@@ -22,7 +22,8 @@ function avatarInitial(name: string) {
   return name[0]?.toUpperCase() ?? "?";
 }
 
-const DAY_OPTIONS = [
+const DAY_OPTIONS: { value: number | null; label: string }[] = [
+  { value: null, label: "All" },
   { value: 1, label: "24h" },
   { value: 3, label: "3d" },
   { value: 7, label: "7d" },
@@ -39,15 +40,22 @@ function JobFeedInner() {
 
   const [keyword, setKeyword] = useState("");
   const [location, setLocation] = useState("");
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState<number | null>(urlCompanyId ? null : 7);
   const [entryLevel, setEntryLevel] = useState(false);
   const [companyId, setCompanyId] = useState(urlCompanyId);
   const [companyName, setCompanyName] = useState(urlCompanyName);
   const [companySearch, setCompanySearch] = useState("");
-  const [committed, setCommitted] = useState({
+  const [committed, setCommitted] = useState<{
+    keyword: string;
+    location: string;
+    days: number | null;
+    entryLevel: boolean;
+    companyId: string;
+    companySearch: string;
+  }>({
     keyword: "",
     location: "",
-    days: 7,
+    days: urlCompanyId ? null : 7,
     entryLevel: false,
     companyId: urlCompanyId,
     companySearch: "",
@@ -61,7 +69,12 @@ function JobFeedInner() {
     const cname = searchParams.get("company_name") ?? "";
     setCompanyId(cid);
     setCompanyName(cname);
-    setCommitted((c) => ({ ...c, companyId: cid }));
+    if (cid) {
+      setDays(null);
+      setCommitted((c) => ({ ...c, companyId: cid, days: null }));
+    } else {
+      setCommitted((c) => ({ ...c, companyId: cid }));
+    }
   }, [searchParams]);
 
   function commit() {
@@ -87,7 +100,7 @@ function JobFeedInner() {
         .list({
           keyword: committed.keyword || undefined,
           location: committed.location || undefined,
-          days: committed.days,
+          days: committed.days ?? undefined,
           entry_level: committed.entryLevel || undefined,
           company_id: committed.companyId || undefined,
           company_name: committed.companySearch || undefined,
@@ -126,7 +139,7 @@ function JobFeedInner() {
   }
 
   const hasFilters =
-    committed.keyword || committed.location || committed.days !== 7 || committed.entryLevel || committed.companySearch;
+    committed.keyword || committed.location || (committed.days !== null && committed.days !== 7) || committed.entryLevel || committed.companySearch;
 
   return (
     <div className="p-6 space-y-5 max-w-4xl">
@@ -205,7 +218,7 @@ function JobFeedInner() {
           <span className="text-xs text-on-surface-variant font-medium">Posted within:</span>
           {DAY_OPTIONS.map((opt) => (
             <button
-              key={opt.value}
+              key={opt.value ?? "all"}
               onClick={() => {
                 setDays(opt.value);
                 setCommitted((c) => ({ ...c, days: opt.value }));
@@ -258,12 +271,13 @@ function JobFeedInner() {
             {hasFilters && (
               <button
                 onClick={() => {
+                  const defaultDays = companyId ? null : 7;
                   setKeyword("");
                   setLocation("");
-                  setDays(7);
+                  setDays(defaultDays);
                   setEntryLevel(false);
                   setCompanySearch("");
-                  setCommitted({ keyword: "", location: "", days: 7, entryLevel: false, companyId, companySearch: "" });
+                  setCommitted({ keyword: "", location: "", days: defaultDays, entryLevel: false, companyId, companySearch: "" });
                 }}
                 className="text-primary hover:underline"
               >
