@@ -19,41 +19,51 @@ async def _scrape_company(company_id: str) -> dict:
         if not company:
             return {"error": "company not found"}
 
-        if not company.careers_url:
-            logger.info("Discovering careers URL for %s", company.name)
-            found = await find_careers_url(company.name)
-            if not found:
-                logger.warning("No URL found for %s", company.name)
-                company.last_scraped_at = datetime.now(timezone.utc)
-                await db.commit()
-                return {"company": company.name, "new_jobs": 0}
-            company.careers_url = found
-            await db.flush()
-
-        logger.info("Scraping %s → %s", company.name, company.careers_url)
+        company_name = company.name
         try:
+            if not company.careers_url:
+                logger.info("Discovering careers URL for %s", company_name)
+                found = await find_careers_url(company_name)
+                if not found:
+                    logger.warning("No URL found for %s", company_name)
+                    company.last_scraped_at = datetime.now(timezone.utc)
+                    await db.commit()
+                    return {"company": company_name, "new_jobs": 0}
+                company.careers_url = found
+                await db.flush()
+
+            logger.info("Scraping %s → %s", company_name, company.careers_url)
             raw_jobs = await scrape_company_jobs(company.careers_url)
-        except Exception as exc:
-            logger.warning("Scrape error for %s: %s", company.name, exc)
+
+            new_count = 0
+            for job_data in raw_jobs:
+                existing = await db.scalar(
+                    select(JobPosting).where(JobPosting.url == job_data["url"])
+                )
+                if existing:
+                    continue
+                db.add(JobPosting(company_id=company_id, **job_data))
+                new_count += 1
+
             company.last_scraped_at = datetime.now(timezone.utc)
             await db.commit()
-            return {"company": company.name, "new_jobs": 0}
+            logger.info("Scraped %d new jobs for %s", new_count, company_name)
+            return {"company": company_name, "new_jobs": new_count}
 
-        new_count = 0
-        for job_data in raw_jobs:
-            existing = await db.scalar(
-                select(JobPosting).where(JobPosting.url == job_data["url"])
-            )
-            if existing:
-                continue
-            db.add(JobPosting(company_id=company_id, **job_data))
-            new_count += 1
-
-        company.last_scraped_at = datetime.now(timezone.utc)
-        await db.commit()
-
-        logger.info("Scraped %d new jobs for %s", new_count, company.name)
-        return {"company": company.name, "new_jobs": new_count}
+        except Exception as exc:
+            logger.warning("Scrape failed for %s: %s", company_name, exc)
+            # Try stamping last_scraped_at on the existing session first;
+            # if it's in a broken state, open a fresh one.
+            try:
+                company.last_scraped_at = datetime.now(timezone.utc)
+                await db.commit()
+            except Exception:
+                async with AsyncSessionLocal() as db2:
+                    c = await db2.get(Company, company_id)
+                    if c:
+                        c.last_scraped_at = datetime.now(timezone.utc)
+                        await db2.commit()
+            return {"company": company_name, "new_jobs": 0}
 
 
 async def _scrape_all_companies():
