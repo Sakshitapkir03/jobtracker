@@ -15,16 +15,26 @@ import { toast } from "sonner";
 import type { Company, ScrapeStatus } from "@/types";
 import ContactsDialog from "@/components/contacts/ContactsDialog";
 
+function loadResume() {
+  if (typeof window === "undefined") return null;
+  if (sessionStorage.getItem("companies-resume") !== "1") return null;
+  return {
+    search: sessionStorage.getItem("companies-search") ?? "",
+    role: sessionStorage.getItem("companies-role") ?? "",
+    scroll: parseInt(sessionStorage.getItem("companies-scroll") ?? "0", 10),
+  };
+}
+
 export function CompaniesPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [roleSearch, setRoleSearch] = useState("");
-  const [debouncedRole, setDebouncedRole] = useState("");
+  const [search, setSearch] = useState(() => loadResume()?.search ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => loadResume()?.search ?? "");
+  const [roleSearch, setRoleSearch] = useState(() => loadResume()?.role ?? "");
+  const [debouncedRole, setDebouncedRole] = useState(() => loadResume()?.role ?? "");
   const [scrapeStatus, setScrapeStatus] = useState<Record<string, ScrapeStatus>>({});
   const [editingUrl, setEditingUrl] = useState<{ id: string; value: string } | null>(null);
   const [contactsCompany, setContactsCompany] = useState<Company | null>(null);
@@ -64,13 +74,16 @@ export function CompaniesPage() {
   const allCompanies = data?.pages.flatMap((p: any) => p.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
 
-  // Restore scroll position when navigating back from job feed
+  // Restore scroll position when navigating back from job feed, then clear saved state
   useEffect(() => {
-    const saved = sessionStorage.getItem("companies-scroll");
-    if (!saved) return;
+    const resume = loadResume();
+    if (!resume) return;
     const main = document.querySelector("main");
-    if (main) main.scrollTop = parseInt(saved, 10);
+    if (main) main.scrollTop = resume.scroll;
+    sessionStorage.removeItem("companies-resume");
     sessionStorage.removeItem("companies-scroll");
+    sessionStorage.removeItem("companies-search");
+    sessionStorage.removeItem("companies-role");
   }, []);
 
   useEffect(() => {
@@ -367,7 +380,10 @@ export function CompaniesPage() {
                         <button
                           onClick={() => {
                             const main = document.querySelector("main");
-                            if (main) sessionStorage.setItem("companies-scroll", String(main.scrollTop));
+                            sessionStorage.setItem("companies-resume", "1");
+                            sessionStorage.setItem("companies-scroll", String(main?.scrollTop ?? 0));
+                            sessionStorage.setItem("companies-search", search);
+                            sessionStorage.setItem("companies-role", roleSearch);
                             router.push(
                               `/jobs?company_id=${company.id}&company_name=${encodeURIComponent(company.name)}`
                             );
