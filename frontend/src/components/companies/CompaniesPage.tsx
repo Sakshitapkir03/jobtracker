@@ -57,11 +57,21 @@ export function CompaniesPage() {
     initialPageParam: 1,
     getNextPageParam: (lastPage: any, _: any, lastPageParam: any) =>
       lastPageParam < lastPage.pages ? lastPageParam + 1 : undefined,
+    staleTime: 60_000,
     refetchInterval: isScrapingAll ? 15_000 : false,
   });
 
   const allCompanies = data?.pages.flatMap((p: any) => p.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
+
+  // Restore scroll position when navigating back from job feed
+  useEffect(() => {
+    const saved = sessionStorage.getItem("companies-scroll");
+    if (!saved) return;
+    const main = document.querySelector("main");
+    if (main) main.scrollTop = parseInt(saved, 10);
+    sessionStorage.removeItem("companies-scroll");
+  }, []);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -355,11 +365,13 @@ export function CompaniesPage() {
                     <td className="px-4 py-3">
                       {company.job_count > 0 ? (
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            const main = document.querySelector("main");
+                            if (main) sessionStorage.setItem("companies-scroll", String(main.scrollTop));
                             router.push(
                               `/jobs?company_id=${company.id}&company_name=${encodeURIComponent(company.name)}`
-                            )
-                          }
+                            );
+                          }}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-data hover:bg-primary/20 transition-colors"
                         >
                           <Briefcase className="h-3 w-3" />
